@@ -1,5 +1,5 @@
 // File: mgit-ios-bridge/go.mod
-module mgitiosbridge
+module MGitBridge
 
 go 1.23.0
 
