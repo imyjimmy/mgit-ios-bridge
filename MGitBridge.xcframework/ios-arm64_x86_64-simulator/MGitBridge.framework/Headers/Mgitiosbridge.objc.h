@@ -11,11 +11,182 @@
 #include "Universe.objc.h"
 
 
+@class MgitiosbridgeCloneResult;
+@class MgitiosbridgeCommitResult;
+@class MgitiosbridgeHelpResult;
+@class MgitiosbridgeLogResult;
+@class MgitiosbridgeMCommitInfo;
+@class MgitiosbridgeMGitSignature;
+@class MgitiosbridgeMathResult;
+@class MgitiosbridgePullResult;
+@class MgitiosbridgePushResult;
+@class MgitiosbridgeRepositoryInfo;
+
+/**
+ * CloneResult represents the result of a clone operation
+ */
+@interface MgitiosbridgeCloneResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull message;
+@property (nonatomic) NSString* _Nonnull repoID;
+@property (nonatomic) NSString* _Nonnull repoName;
+@property (nonatomic) NSString* _Nonnull localPath;
+@end
+
+/**
+ * CommitResult represents the result of a commit operation
+ */
+@interface MgitiosbridgeCommitResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull message;
+@property (nonatomic) NSString* _Nonnull gitHash;
+@property (nonatomic) NSString* _Nonnull mGitHash;
+@property (nonatomic) NSString* _Nonnull commitMsg;
+@end
+
+/**
+ * HelpResult represents the result of the help operation
+ */
+@interface MgitiosbridgeHelpResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull helpText;
+@property (nonatomic) NSString* _Nonnull message;
+@end
+
+/**
+ * LogResult represents the result of logging tests
+ */
+@interface MgitiosbridgeLogResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull result;
+@property (nonatomic) NSString* _Nonnull message;
+@end
+
+/**
+ * MCommitInfo represents simplified MGit commit information for iOS
+ */
+@interface MgitiosbridgeMCommitInfo : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull mGitHash;
+@property (nonatomic) NSString* _Nonnull gitHash;
+@property (nonatomic) NSString* _Nonnull message;
+// skipped field MCommitInfo.Author with unsupported type: mgitiosbridge.MGitSignature
+
+// skipped field MCommitInfo.Committer with unsupported type: mgitiosbridge.MGitSignature
+
+// skipped field MCommitInfo.ParentHashes with unsupported type: []string
+
+@property (nonatomic) NSString* _Nonnull treeHash;
+@end
+
+/**
+ * MGitSignature represents a signature in an MGit commit (simplified for iOS)
+ */
+@interface MgitiosbridgeMGitSignature : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull name;
+@property (nonatomic) NSString* _Nonnull email;
+@property (nonatomic) NSString* _Nonnull pubkey;
+@property (nonatomic) NSString* _Nonnull when;
+@end
+
+/**
+ * MathResult represents the result of simple math operations
+ */
+@interface MgitiosbridgeMathResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) long result;
+@property (nonatomic) NSString* _Nonnull message;
+@end
+
+/**
+ * PullResult represents the result of a pull operation
+ */
+@interface MgitiosbridgePullResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull message;
+@property (nonatomic) long changes;
+@end
+
+/**
+ * PushResult represents the result of a push operation
+ */
+@interface MgitiosbridgePushResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) BOOL success;
+@property (nonatomic) NSString* _Nonnull message;
+@property (nonatomic) NSString* _Nonnull commitHash;
+@end
+
+/**
+ * RepositoryInfo represents information about a repository
+ */
+@interface MgitiosbridgeRepositoryInfo : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull id_;
+@property (nonatomic) NSString* _Nonnull name;
+@property (nonatomic) NSString* _Nonnull access;
+@end
+
+/**
+ * Clone clones an MGit repository to the specified local path
+ */
+FOUNDATION_EXPORT MgitiosbridgeCloneResult* _Nullable MgitiosbridgeClone(NSString* _Nullable url, NSString* _Nullable localPath, NSString* _Nullable token);
+
 /**
  * Help returns MGit help information for iOS
 This function provides the same help text as the main MGit project
  */
 FOUNDATION_EXPORT NSString* _Nonnull MgitiosbridgeHelp(void);
+
+// skipped function NSLog with unsupported parameter or return types
+
 
 /**
  * SimpleAdd performs a simple addition (for basic functionality testing)
