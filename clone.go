@@ -6,19 +6,21 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-git/go-git/v5"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-// cloneRepository implements the MGit clone functionality
+// cloneRepository implements the MGit clone functionality using go-git
 func cloneRepository(url, destination, token string) error {
 	// Create the destination directory if it doesn't exist
 	if err := os.MkdirAll(destination, 0755); err != nil {
 		return fmt.Errorf("error creating destination directory: %w", err)
 	}
 
-	// Fetch repository metadata
+	// Fetch repository metadata first
 	NSLog("Fetching repository metadata...")
 	repoInfo, err := fetchRepositoryInfo(url, token)
 	if err != nil {
@@ -27,9 +29,9 @@ func cloneRepository(url, destination, token string) error {
 
 	NSLog("Repository: %s, Access level: %s", repoInfo.Name, repoInfo.Access)
 
-	// Clone the Git data
-	NSLog("Cloning Git repository...")
-	if err := gitClone(url, destination, token); err != nil {
+	// Clone the Git data using go-git instead of system git
+	NSLog("Cloning Git repository with go-git...")
+	if err := gitCloneWithGoGit(url, destination, token); err != nil {
 		return fmt.Errorf("error cloning Git repository: %w", err)
 	}
 
@@ -44,6 +46,69 @@ func cloneRepository(url, destination, token string) error {
 		return fmt.Errorf("error setting up MGit config: %w", err)
 	}
 
+	NSLog("Clone completed successfully")
+	return nil
+}
+
+// gitCloneWithGoGit performs the Git clone using go-git library (iOS compatible)
+func gitCloneWithGoGit(url, destination, token string) error {
+	repoID := extractRepoID(url)
+	serverBaseURL := extractServerBaseURL(url)
+	
+	// Construct the Git URL for the repository
+	gitURL := fmt.Sprintf("%s/api/mgit/repos/%s", serverBaseURL, repoID)
+	
+	NSLog("Cloning from: %s", gitURL)
+	NSLog("Destination: %s", destination)
+	
+	// Set up authentication using Bearer token
+	auth := &githttp.BasicAuth{
+		Username: "token", // Username can be anything when using token auth
+		Password: token,
+	}
+	
+	// Clone options
+	cloneOptions := &git.CloneOptions{
+		URL:               gitURL,
+		Auth:              auth,
+		RemoteName:        "origin",
+		ReferenceName:     "", // Clone default branch
+		SingleBranch:      false, // Clone all branches
+		NoCheckout:        false, // Do checkout working directory
+		Depth:             0, // Full clone, not shallow
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+	}
+	
+	// Perform the clone
+	repo, err := git.PlainClone(destination, false, cloneOptions)
+	if err != nil {
+		NSLog("Clone failed with error: %s", err.Error())
+		return fmt.Errorf("error cloning repository with go-git: %w", err)
+	}
+	
+	// Verify the clone was successful
+	workTree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("error getting worktree: %w", err)
+	}
+	
+	// Get HEAD to verify we have commits
+	head, err := repo.Head()
+	if err != nil {
+		NSLog("Warning: Could not get HEAD reference: %s", err.Error())
+	} else {
+		NSLog("Successfully cloned, HEAD at: %s", head.Hash().String()[:7])
+	}
+	
+	// Log worktree status
+	status, err := workTree.Status()
+	if err != nil {
+		NSLog("Warning: Could not get worktree status: %s", err.Error())
+	} else {
+		NSLog("Worktree status: %d files", len(status))
+	}
+	
+	NSLog("Git clone completed successfully")
 	return nil
 }
 
@@ -70,7 +135,7 @@ func fetchRepositoryInfo(url, token string) (*RepositoryInfo, error) {
 	
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("error response from server: %s", string(bodyBytes))
+		return nil, fmt.Errorf("error response from server (status %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 	
 	var repoInfo RepositoryInfo
@@ -96,27 +161,6 @@ func extractServerBaseURL(url string) string {
 	return baseURL
 }
 
-// gitClone performs the actual Git clone operation
-func gitClone(url, destination, token string) error {
-	repoID := extractRepoID(url)
-	serverBaseURL := extractServerBaseURL(url)
-	
-	gitURL := fmt.Sprintf("%s/api/mgit/repos/%s", serverBaseURL, repoID)
-	authHeader := fmt.Sprintf("http.extraHeader=Authorization: Bearer %s", token)
-	
-	NSLog("Debug info for git clone:")
-	NSLog("  Git URL: %s", gitURL)
-	NSLog("  Destination: %s", destination)
-	
-	cmd := exec.Command("git", "clone", "-c", authHeader, gitURL, destination)
-	
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error running git clone: %w", err)
-	}
-	
-	return nil
-}
-
 // fetchMGitMetadata fetches the MGit metadata and sets it up in the repository
 func fetchMGitMetadata(url, destination, token string) error {
 	repoID := extractRepoID(url)
@@ -140,7 +184,7 @@ func fetchMGitMetadata(url, destination, token string) error {
 	
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("error response from server: %s", string(bodyBytes))
+		return fmt.Errorf("error response from server (status %d): %s", resp.StatusCode, string(bodyBytes))
 	}
 	
 	var mappings []interface{}
@@ -172,7 +216,7 @@ func fetchMGitMetadata(url, destination, token string) error {
 		return fmt.Errorf("error writing nostr_mappings.json file: %w", err)
 	}
 	
-	NSLog("Successfully fetched and stored MGit metadata")
+	NSLog("Successfully fetched and stored MGit metadata (%d mappings)", len(mappings))
 	return nil
 }
 
@@ -180,17 +224,27 @@ func fetchMGitMetadata(url, destination, token string) error {
 func setupMGitConfig(destination string, repoInfo *RepositoryInfo) error {
 	// Create basic MGit config structure
 	mgitDir := filepath.Join(destination, ".mgit")
+	if err := os.MkdirAll(mgitDir, 0755); err != nil {
+		return fmt.Errorf("error creating .mgit directory: %w", err)
+	}
+	
 	configPath := filepath.Join(mgitDir, "config")
 	
 	// Create a simple config file
 	configContent := fmt.Sprintf(`[repository]
 	id = %s
 	name = %s
-`, repoInfo.ID, repoInfo.Name)
+	access = %s
+
+[mgit]
+	version = 1.0
+	initialized = true
+`, repoInfo.ID, repoInfo.Name, repoInfo.Access)
 	
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		return fmt.Errorf("error writing MGit config: %w", err)
 	}
 	
+	NSLog("MGit config created successfully")
 	return nil
 }
