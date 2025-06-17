@@ -1,4 +1,4 @@
-package mgitiosbridge
+package MGitBridge
 
 import (
 	"bytes"

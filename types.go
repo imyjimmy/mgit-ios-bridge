@@ -1,4 +1,4 @@
-package mgitiosbridge
+package MGitBridge
 
 // Basic result types for iOS compatibility
 
