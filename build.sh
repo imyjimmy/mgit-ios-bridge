@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🔨 Building MGit iOS Bridge..."
+echo "🔨 Building MGit Bridge..."
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,6 +14,117 @@ print_status() { echo "${GREEN}✅ $1${NC}"; }
 print_warning() { echo "${YELLOW}⚠️  $1${NC}"; }
 print_error() { echo "${RED}❌ $1${NC}"; }
 print_info() { echo "${BLUE}ℹ️  $1${NC}"; }
+
+# iOS build function
+build_ios() {
+    print_status "Building iOS framework..."
+    FRAMEWORK_NAME="MGitBridge.xcframework"
+    
+    # Remove old framework
+    rm -rf "$FRAMEWORK_NAME" 2>/dev/null || true
+    
+    # Build iOS framework
+    if gomobile bind -target ios -o "$FRAMEWORK_NAME" .; then
+        print_status "iOS framework built successfully"
+    else
+        print_error "iOS framework build failed"
+        exit 1
+    fi
+    
+    # Verify framework
+    if [[ -d "$FRAMEWORK_NAME" ]]; then
+        print_status "Framework created successfully"
+        echo "  📁 Location: $(pwd)/$FRAMEWORK_NAME"
+        echo "  📊 Size: $(du -sh $FRAMEWORK_NAME | cut -f1)"
+    else
+        print_error "Framework was not created"
+        exit 1
+    fi
+    
+    # Copy to React Native iOS
+    RN_MODULE_PATH="../react-native-mgit/ios/frameworks"
+    if [[ -d "$RN_MODULE_PATH" ]]; then
+        print_status "Copying to React Native iOS module..."
+        rm -rf "$RN_MODULE_PATH/$FRAMEWORK_NAME"
+        cp -r "$FRAMEWORK_NAME" "$RN_MODULE_PATH/"
+        print_status "Framework copied to $RN_MODULE_PATH"
+    else
+        print_warning "React Native iOS module path not found: $RN_MODULE_PATH"
+    fi
+}
+
+# Android build function  
+build_android() {
+    print_status "Building Android library..."
+    LIBRARY_NAME="mgitbridge.aar"
+    
+    # Remove old library
+    rm -rf "$LIBRARY_NAME" 2>/dev/null || true
+    
+    # Build Android library
+    if gomobile bind -target android -o "$LIBRARY_NAME" .; then
+        print_status "Android library built successfully"
+    else
+        print_error "Android library build failed"
+        exit 1
+    fi
+    
+    # Verify library
+    if [[ -f "$LIBRARY_NAME" ]]; then
+        print_status "Library created successfully"
+        echo "  📁 Location: $(pwd)/$LIBRARY_NAME"
+        echo "  📊 Size: $(du -sh $LIBRARY_NAME | cut -f1)"
+    else
+        print_error "Library was not created"
+        exit 1
+    fi
+    
+    # Copy to React Native Android (future)
+    RN_ANDROID_PATH="../react-native-mgit/android/libs"
+    if [[ -d "$RN_ANDROID_PATH" ]]; then
+        print_status "Copying to React Native Android module..."
+        cp "$LIBRARY_NAME" "$RN_ANDROID_PATH/"
+        print_status "Library copied to $RN_ANDROID_PATH"
+    else
+        print_warning "React Native Android module path not found: $RN_ANDROID_PATH"
+        print_info "Will create when React Native Android support is added"
+    fi
+}
+
+# Parse command line arguments
+TARGET="ios"  # Default target
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --target)
+            TARGET="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--target <ios|android>]"
+            echo ""
+            echo "Options:"
+            echo "  --target    Target platform (ios or android) [default: ios]"
+            echo "  -h, --help  Show this help message"
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Validate target
+case $TARGET in
+    ios|android)
+        print_info "Building for target: $TARGET"
+        ;;
+    *)
+        print_error "Invalid target: $TARGET. Supported targets: ios, android"
+        exit 1
+        ;;
+esac
 
 # Function to properly set up gomobile
 setup_gomobile() {
@@ -51,7 +162,7 @@ setup_gomobile() {
 
 # Check directory
 if [[ ! -f "go.mod" ]]; then
-    print_error "go.mod not found. Make sure you're in the mgit-ios-bridge directory."
+    print_error "go.mod not found. Make sure you're in the mgit-bridge directory."
     exit 1
 fi
 
@@ -90,40 +201,14 @@ else
     print_status "gomobile is ready: $(gomobile version)"
 fi
 
-# Build framework
-print_status "Building iOS framework..."
-FRAMEWORK_NAME="MGitBridge.xcframework"
+# Build based on target
+case $TARGET in
+    ios)
+        build_ios
+        ;;
+    android)
+        build_android
+        ;;
+esac
 
-# Remove old framework
-rm -rf "$FRAMEWORK_NAME" 2>/dev/null || true
-
-# Build framework
-if gomobile bind -target ios -o "$FRAMEWORK_NAME" .; then
-    print_status "iOS framework built successfully"
-else
-    print_error "iOS framework build failed"
-    exit 1
-fi
-
-# Verify framework
-if [[ -d "$FRAMEWORK_NAME" ]]; then
-    print_status "Framework created successfully"
-    echo "  📁 Location: $(pwd)/$FRAMEWORK_NAME"
-    echo "  📊 Size: $(du -sh $FRAMEWORK_NAME | cut -f1)"
-else
-    print_error "Framework was not created"
-    exit 1
-fi
-
-# Copy to React Native
-RN_MODULE_PATH="../react-native-mgit/ios/frameworks"
-if [[ -d "$RN_MODULE_PATH" ]]; then
-    print_status "Copying to React Native module..."
-    rm -rf "$RN_MODULE_PATH/$FRAMEWORK_NAME"
-    cp -r "$FRAMEWORK_NAME" "$RN_MODULE_PATH/"
-    print_status "Framework copied to $RN_MODULE_PATH"
-else
-    print_warning "React Native module path not found: $RN_MODULE_PATH"
-fi
-
-print_status "Build completed successfully! 🎉"
+print_status "Build completed successfully for $TARGET! 🎉"
