@@ -52,72 +52,43 @@ func cloneRepository(url, destination, token string) error {
 
 // gitCloneWithGoGit performs the Git clone using go-git library (iOS compatible)
 func gitCloneWithGoGit(url, destination, token string) error {
-	repoID := extractRepoID(url)
-	serverBaseURL := extractServerBaseURL(url)
+	NSLog("🔄 Starting Git clone: %s -> %s", url, destination)
 	
-	// Construct the Git URL for the repository
-	gitURL := fmt.Sprintf("%s/api/mgit/repos/%s", serverBaseURL, repoID)
-	
-	NSLog("Cloning from: %s", gitURL)
-	NSLog("Destination: %s", destination)
-	
-	// Set up authentication using Bearer token
-	auth := &githttp.BasicAuth{
-		Username: "token", // Username can be anything when using token auth
-		Password: token,
+	// Clean up any existing destination
+	if err := os.RemoveAll(destination); err != nil {
+		NSLog("⚠️ Warning: Failed to clean destination: %s", err.Error())
 	}
 	
 	// Clone options
 	cloneOptions := &git.CloneOptions{
-		URL:               gitURL,
-		Auth:              auth,
+		URL:               url,
 		RemoteName:        "origin",
 		ReferenceName:     "", // Clone default branch
 		SingleBranch:      false, // Clone all branches
 		NoCheckout:        false, // Do checkout working directory
 		Depth:             0, // Full clone, not shallow
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+		Auth: &githttp.BasicAuth{
+			Username: "", // Empty username works with MGit server
+			Password: token,
+		},
 	}
 	
-	// Perform the clone
-	repo, err := git.PlainClone(destination, false, cloneOptions)
+	_, err := git.PlainClone(destination, false, cloneOptions)
 	if err != nil {
-		NSLog("Clone failed with error: %s", err.Error())
-		return fmt.Errorf("error cloning repository with go-git: %w", err)
+		NSLog("❌ Git clone failed: %s", err.Error())
+		return fmt.Errorf("error cloning repository: %w", err)
 	}
 	
-	// Verify the clone was successful
-	workTree, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("error getting worktree: %w", err)
-	}
-	
-	// Get HEAD to verify we have commits
-	head, err := repo.Head()
-	if err != nil {
-		NSLog("Warning: Could not get HEAD reference: %s", err.Error())
-	} else {
-		NSLog("Successfully cloned, HEAD at: %s", head.Hash().String()[:7])
-	}
-	
-	// Log worktree status
-	status, err := workTree.Status()
-	if err != nil {
-		NSLog("Warning: Could not get worktree status: %s", err.Error())
-	} else {
-		NSLog("Worktree status: %d files", len(status))
-	}
-	
-	NSLog("Git clone completed successfully")
+	NSLog("✅ Git clone completed successfully")
 	return nil
 }
 
 // fetchRepositoryInfo fetches information about the repository
 func fetchRepositoryInfo(url, token string) (*RepositoryInfo, error) {
-	repoID := extractRepoID(url)
-	serverBaseURL := extractServerBaseURL(url)
+	infoURL := fmt.Sprintf("%s/info", url)
 	
-	infoURL := fmt.Sprintf("%s/api/mgit/repos/%s/info", serverBaseURL, repoID)
+	NSLog("🆕 NEW fetchRepositoryInfo - requesting: %s", infoURL)
 	
 	req, err := http.NewRequest("GET", infoURL, nil)
 	if err != nil {
@@ -163,10 +134,7 @@ func extractServerBaseURL(url string) string {
 
 // fetchMGitMetadata fetches the MGit metadata and sets it up in the repository
 func fetchMGitMetadata(url, destination, token string) error {
-	repoID := extractRepoID(url)
-	serverBaseURL := extractServerBaseURL(url)
-	
-	metadataURL := fmt.Sprintf("%s/api/mgit/repos/%s/metadata", serverBaseURL, repoID)
+	metadataURL := fmt.Sprintf("%s/metadata", url)
 	
 	req, err := http.NewRequest("GET", metadataURL, nil)
 	if err != nil {
