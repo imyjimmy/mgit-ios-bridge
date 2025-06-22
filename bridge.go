@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // NSLog provides iOS-style logging that's visible in Xcode Console
@@ -268,4 +269,65 @@ func Commit(repoPath string, message string, authorName string, authorEmail stri
    result.MGitHash = mgitHash
    
    return result
+}
+
+// Push pushes changes to the remote repository
+func Push(repoPath, token string) *PushResult {
+	result := &PushResult{Success: false, Message: "", CommitHash: ""}
+
+	// Open the repository
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		result.Message = fmt.Sprintf("Failed to open repository: %v", err)
+		return result
+	}
+
+	// Get the current HEAD commit hash before pushing
+	ref, err := repo.Head()
+	if err != nil {
+		result.Message = fmt.Sprintf("Failed to get HEAD reference: %v", err)
+		return result
+	}
+	result.CommitHash = ref.Hash().String()
+
+	// Get the remote origin
+	remote, err := repo.Remote("origin")
+	if err != nil {
+		result.Message = fmt.Sprintf("No remote 'origin' found: %v", err)
+		return result
+	}
+
+	// Get the remote URL
+	config := remote.Config()
+	if len(config.URLs) == 0 {
+		result.Message = "No remote URL configured"
+		return result
+	}
+
+	// Set up authentication using githttp.BasicAuth (consistent with clone)
+	auth := &githttp.BasicAuth{
+		Username: "", // Empty username works with MGit server
+		Password: token, // JWT token from QR scan
+	}
+
+	// Push to the remote (main branch)
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		Auth:       auth,
+	})
+
+	if err != nil {
+		// Handle common push errors
+		if err == git.NoErrAlreadyUpToDate {
+			result.Success = true
+			result.Message = "Already up to date"
+			return result
+		}
+		result.Message = fmt.Sprintf("Push failed: %v", err)
+		return result
+	}
+
+	result.Success = true
+	result.Message = "Push completed successfully"
+	return result
 }
