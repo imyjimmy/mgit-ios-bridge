@@ -1,8 +1,0 @@
-framework module "MGitBridge" {
-	header "ref.h"
-    header "MGitBridge.objc.h"
-    header "Universe.objc.h"
-    header "MGitBridge.h"
-
-    export *
-}
