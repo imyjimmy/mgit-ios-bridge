@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // NSLog provides iOS-style logging that's visible in Xcode Console
@@ -305,10 +304,7 @@ func Push(repoPath, token string) *PushResult {
 	}
 
 	// Set up authentication using githttp.BasicAuth (consistent with clone)
-	auth := &githttp.BasicAuth{
-		Username: "", // Empty username works with MGit server
-		Password: token, // JWT token from QR scan
-	}
+	auth := &CustomAuth{ Token: token }
 
 	// Push to the remote (main branch)
 	err = repo.Push(&git.PushOptions{
