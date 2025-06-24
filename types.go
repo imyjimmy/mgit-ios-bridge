@@ -1,9 +1,5 @@
 package MGitBridge
 
-import (
-	"fmt"
-)
-
 // Basic result types for iOS compatibility
 
 // HelpResult represents the result of the help operation
@@ -83,16 +79,4 @@ type MCommitInfo struct {
 	Committer    MGitSignature `json:"committer"`
 	ParentHashes []string      `json:"parent_hashes"`
 	TreeHash     string        `json:"tree_hash"`
-}
-
-type CustomAuth struct {
-  Token string
-}
-
-func (a *CustomAuth) Name() string {
-  return "bearer"
-}
-
-func (a *CustomAuth) String() string {
-  return fmt.Sprintf("Bearer %s", a.Token)
 }
