@@ -135,6 +135,51 @@ func SimpleAdd(a, b int) int {
 	return result
 }
 
+// Add stages files for commit using go-git (exactly mimics CLI mgit add)
+func Add(repoPath string, filePaths string) *AddResult {
+	log.Printf("MGitBridge: Add() called for repo: %s", repoPath)
+	log.Printf("MGitBridge: Files to add: %s", filePaths)
+	
+	result := &AddResult{
+		Success: false,
+		Message: "",
+		Error:   "",
+	}
+	
+	// Open the repository using go-git
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		log.Printf("MGitBridge: Error opening repository: %s", err)
+		result.Error = fmt.Sprintf("Error opening repository: %s", err)
+		return result
+	}
+	
+	// Get the worktree
+	w, err := repo.Worktree()
+	if err != nil {
+		log.Printf("MGitBridge: Error getting worktree: %s", err)
+		result.Error = fmt.Sprintf("Error getting worktree: %s", err)
+		return result
+	}
+	
+	log.Printf("MGitBridge: Adding file to staging: %s", filePaths)
+	
+	// Add the file to staging (exactly like CLI does with w.Add(file))
+	_, err = w.Add(filePaths)
+	if err != nil {
+		log.Printf("MGitBridge: Error adding file: %s", err)
+		result.Error = fmt.Sprintf("Error adding file %s: %s", filePaths, err)
+		return result
+	}
+	
+	log.Printf("MGitBridge: File successfully staged: %s", filePaths)
+	
+	result.Success = true
+	result.Message = "Changes staged for commit"
+	
+	return result
+}
+
 // Clone clones an MGit repository to the specified local path
 func Clone(url, localPath, token string) *CloneResult {
 	NSLog("Clone(%s, %s, %s) called", url, localPath, "***")
@@ -269,18 +314,6 @@ func Commit(repoPath string, message string, authorName string, authorEmail stri
    result.MGitHash = mgitHash
    
    return result
-}
-
-type CustomAuth struct {
-    Token string
-}
-
-func (a *CustomAuth) Name() string {
-    return "bearer"
-}
-
-func (a *CustomAuth) String() string {
-    return fmt.Sprintf("Bearer %s", a.Token)
 }
 
 // Push pushes changes to the remote repository

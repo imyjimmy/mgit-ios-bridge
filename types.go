@@ -39,6 +39,13 @@ type RepositoryInfo struct {
 	Access string `json:"access"`
 }
 
+// AddResult represents the result of an add operation
+type AddResult struct {
+	Success bool
+	Message string
+	Error   string
+}
+
 // CommitResult represents the result of a commit operation
 type CommitResult struct {
 	Success    bool   `json:"success"`
