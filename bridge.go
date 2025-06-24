@@ -317,8 +317,9 @@ func Push(repoPath, token string) *PushResult {
 	}
 
 	// Set up authentication using githttp.BasicAuth (consistent with clone)
-	auth := &githttp.TokenAuth{
-		Token: token,
+	auth := &githttp.BasicAuth{
+		Username: "", // Empty username works with MGit server
+		Password: token, // JWT token from QR scan
 	}
 
 	// Push to the remote (main branch)
