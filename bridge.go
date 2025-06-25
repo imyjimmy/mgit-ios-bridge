@@ -6,10 +6,8 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -178,142 +176,6 @@ func Add(repoPath string, filePaths string) *AddResult {
 	result.Message = "Changes staged for commit"
 	
 	return result
-}
-
-// Clone clones an MGit repository to the specified local path
-func Clone(url, localPath, token string) *CloneResult {
-	NSLog("Clone(%s, %s, %s) called", url, localPath, "***")
-	
-	result := &CloneResult{
-		Success:   false,
-		Message:   "",
-		RepoID:    "",
-		RepoName:  "",
-		LocalPath: localPath,
-	}
-	
-	// Validate inputs
-	if url == "" {
-		result.Message = "Repository URL cannot be empty"
-		NSLog("Clone() failed: %s", result.Message)
-		return result
-	}
-	
-	if localPath == "" {
-		result.Message = "Local path cannot be empty"
-		NSLog("Clone() failed: %s", result.Message)
-		return result
-	}
-	
-	if token == "" {
-		result.Message = "Authentication token cannot be empty"
-		NSLog("Clone() failed: %s", result.Message)
-		return result
-	}
-	
-	// Check if destination already exists
-	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
-		result.Message = fmt.Sprintf("Destination path already exists: %s", localPath)
-		NSLog("Clone() failed: %s", result.Message)
-		return result
-	}
-	
-	// Call the actual MGit clone function
-	err := cloneRepository(url, localPath, token)
-	
-	if err != nil {
-		result.Message = fmt.Sprintf("Clone failed: %s", err.Error())
-		NSLog("Clone() failed: %s", err.Error())
-		return result
-	}
-	
-	// Extract repository info from the URL for the result
-	repoID := extractRepoID(url)
-	result.Success = true
-	result.Message = "Repository cloned successfully"
-	result.RepoID = repoID
-	result.RepoName = repoID // Could be enhanced to get actual name from metadata
-	
-	NSLog("Clone() succeeded: %s", result.Message)
-	return result
-}
-
-// Commit creates an MGit commit with Nostr signature using go-git directly
-func Commit(repoPath string, message string, authorName string, authorEmail string, nostrPubkey string) *CommitResult {
-   log.Printf("MGitBridge: Commit() called for repo: %s", repoPath)
-   log.Printf("MGitBridge: Message: %s", message)
-   log.Printf("MGitBridge: Author: %s <%s>", authorName, authorEmail)
-   log.Printf("MGitBridge: Nostr pubkey: %s", nostrPubkey)
-   
-   result := &CommitResult{
-   	Success:   false,
-   	Message:   "",
-   	GitHash:   "",
-   	MGitHash:  "",
-   	CommitMsg: message,
-   }
-   
-   // Open the repository using go-git
-   repo, err := git.PlainOpen(repoPath)
-   if err != nil {
-   	log.Printf("MGitBridge: Error opening repository: %s", err)
-   	result.Message = fmt.Sprintf("Error opening repository: %s", err)
-   	return result
-   }
-   
-   // Get the worktree
-   w, err := repo.Worktree()
-   if err != nil {
-   	log.Printf("MGitBridge: Error getting worktree: %s", err)
-   	result.Message = fmt.Sprintf("Error getting worktree: %s", err)
-   	return result
-   }
-   
-   // Create author signature
-   author := &object.Signature{
-   	Name:  authorName,
-   	Email: authorEmail,
-   	When:  time.Now(),
-   }
-   
-   // Create commit options
-   commitOpts := &git.CommitOptions{
-   	Author: author,
-   }
-   
-   log.Printf("MGitBridge: Performing git commit...")
-   
-   // Perform the standard git commit
-   gitHash, err := w.Commit(message, commitOpts)
-   if err != nil {
-   	log.Printf("MGitBridge: Error committing: %s", err)
-   	result.Message = fmt.Sprintf("Error committing: %s", err)
-   	return result
-   }
-   
-   log.Printf("MGitBridge: Git commit successful: %s", gitHash.String())
-   
-   // For now, use git hash as mgit hash (simplified)
-   // TODO: Implement full MGit functionality (hash calculation, storage, mappings)
-   mgitHash := gitHash.String()
-   
-   if nostrPubkey != "" {
-   	log.Printf("MGitBridge: TODO - Implement MGit hash calculation with pubkey")
-   	// TODO: This is where we'd implement:
-   	// 1. computeMGitHash(gitCommit, parentMGitHashes, nostrPubkey)
-   	// 2. storage.StoreCommit(mgitCommit)
-   	// 3. storage.StoreMapping(gitHash, mgitHash, nostrPubkey)
-   }
-   
-   log.Printf("MGitBridge: Commit completed successfully")
-   
-   // Update result for success case
-   result.Success = true
-   result.Message = "Commit created successfully"
-   result.GitHash = gitHash.String()
-   result.MGitHash = mgitHash
-   
-   return result
 }
 
 // Push pushes changes to the remote repository

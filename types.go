@@ -23,6 +23,61 @@ type MathResult struct {
 	Message string `json:"message"`
 }
 
+type MGitObjectType string
+
+const (
+	MGitCommitObject MGitObjectType = "commit"
+	MGitTreeObject   MGitObjectType = "tree"
+	MGitBlobObject   MGitObjectType = "blob"
+)
+
+// Signature represents the author or committer information including nostr pubkey
+type Signature struct {
+	Name   string
+	Email  string
+	Pubkey string
+	When   string
+}
+
+// MGitSignature represents a signature in an MGit commit (simplified for iOS)
+type MGitSignature struct {
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Pubkey string `json:"pubkey,omitempty"`
+	When   string `json:"when"` // Using string instead of time.Time for iOS compatibility
+	Signature string    `json:"signature,omitempty"` // Nostr signature
+}
+
+// MCommitStruct represents an mcommit object
+type MCommitStruct struct {
+	Type         MGitObjectType       `json:"type"`
+	MGitHash     string               `json:"mgit_hash"`
+	GitHash      string               `json:"git_hash"`
+	TreeHash     string               `json:"tree_hash"`
+	ParentHashes []string             `json:"parent_hashes"` // MGit hashes of parents
+	Author       *MGitSignature       `json:"author"`
+	Committer    *MGitSignature       `json:"committer"`
+	Message      string               `json:"message"`
+	Metadata     map[string]string    `json:"metadata,omitempty"`
+	NostrEvent   *NostrEvent          `json:"nostr_event,omitempty"` // Nostr signature event
+}
+
+// NostrEvent represents a signed Nostr event for the commit
+type NostrEvent struct {
+	ID        string                 `json:"id"`
+	Pubkey    string                 `json:"pubkey"`
+	CreatedAt int64                  `json:"created_at"`
+	Kind      int                    `json:"kind"`
+	Tags      [][]string             `json:"tags"`
+	Content   string                 `json:"content"`
+	Sig       string                 `json:"sig"`
+}
+
+// MGitStorage handles the storage and retrieval of MGit objects
+type MGitStorage struct {
+	RootDir string // Usually ".mgit"
+}
+
 // CloneResult represents the result of a clone operation
 type CloneResult struct {
 	Success   bool   `json:"success"`
@@ -41,9 +96,9 @@ type RepositoryInfo struct {
 
 // AddResult represents the result of an add operation
 type AddResult struct {
-	Success bool
-	Message string
-	Error   string
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Error   string `json:"error"`
 }
 
 // CommitResult represents the result of a commit operation
@@ -67,14 +122,6 @@ type PullResult struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Changes int    `json:"changes"`
-}
-
-// MGitSignature represents a signature in an MGit commit (simplified for iOS)
-type MGitSignature struct {
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Pubkey string `json:"pubkey,omitempty"`
-	When   string `json:"when"` // Using string instead of time.Time for iOS compatibility
 }
 
 // MCommitInfo represents simplified MGit commit information for iOS
