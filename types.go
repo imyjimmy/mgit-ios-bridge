@@ -59,7 +59,7 @@ type MCommitStruct struct {
 	Committer    *MGitSignature       `json:"committer"`
 	Message      string               `json:"message"`
 	Metadata     map[string]string    `json:"metadata,omitempty"`
-	NostrEvent   *NostrEvent          `json:"nostr_event,omitempty"` // Nostr signature event
+	NostrSig     string               `json:"nostr_sig,omitempty"` // Nostr signature
 }
 
 // NostrEvent represents a signed Nostr event for the commit

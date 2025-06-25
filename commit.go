@@ -227,44 +227,28 @@ func computeMGitHash(commit *object.Commit, parentMGitHashes []string, pubkey st
 	return result
 }
 
-// createNostrSignature creates a Nostr signature for the commit
-func createNostrSignature(commit *MCommitStruct, pubkey string) *NostrEvent {
-	// Create commit content for signing
-	commitContent := fmt.Sprintf("MGit commit: %s\nMessage: %s\nTree: %s\nParents: %s", 
-		commit.MGitHash, 
-		commit.Message, 
+// createCommitSignature creates a Nostr signature directly for the MGit commit data
+func createCommitSignature(commit *MCommitStruct, pubkey string) string {
+	// Create the signable content from the commit data
+	signableContent := fmt.Sprintf("%s|%s|%s|%s|%s|%s", 
+		commit.MGitHash,
+		commit.GitHash, 
 		commit.TreeHash,
-		strings.Join(commit.ParentHashes, ","))
+		strings.Join(commit.ParentHashes, ","),
+		commit.Message,
+		pubkey)
 	
-	// Create a Nostr event (kind 1 for text note, or we could define a custom kind for MGit commits)
-	event := &NostrEvent{
-		Pubkey:    pubkey,
-		CreatedAt: time.Now().Unix(),
-		Kind:      20001, // Custom kind for MGit commits
-		Tags: [][]string{
-			{"mgit", "commit"},
-			{"hash", commit.MGitHash},
-			{"git_hash", commit.GitHash},
-		},
-		Content: commitContent,
-	}
+	// In a real implementation, this would:
+	// 1. Hash the signable content with SHA256
+	// 2. Sign the hash with the Nostr private key (schnorr signature)
+	// 3. Return the signature as hex string
 	
-	// In a full implementation, this would:
-	// 1. Serialize the event for signing
-	// 2. Create a SHA256 hash of the serialized event
-	// 3. Sign the hash with the Nostr private key (schnorr signature)
-	// 4. Set the signature and ID fields
-	
-	// For now, we'll create a placeholder signature
-	eventData := fmt.Sprintf("%d%s%d%s", event.CreatedAt, event.Pubkey, event.Kind, event.Content)
+	// For now, create a deterministic placeholder signature
 	hasher := sha1.New()
-	hasher.Write([]byte(eventData))
-	eventHash := hasher.Sum(nil)
+	hasher.Write([]byte(signableContent))
+	hash := hasher.Sum(nil)
 	
-	event.ID = fmt.Sprintf("%x", eventHash)
-	event.Sig = fmt.Sprintf("nostr_sig_%s_%s", pubkey[:8], event.ID[:8]) // Placeholder
-	
-	return event
+	return fmt.Sprintf("nostr_sig_%s_%x", pubkey[:10], hash[:4])
 }
 
 // Commit creates an MGit commit with Nostr signature using go-git directly
@@ -386,15 +370,15 @@ func Commit(repoPath string, message string, authorName string, authorEmail stri
 		Metadata:     map[string]string{"version": "1.0"},
 	}
 	
-	// Create Nostr signature for the commit
-	nostrEvent := createNostrSignature(mgitCommit, nostrPubkey)
-	mgitCommit.NostrEvent = nostrEvent
+	// Create Nostr signature for the entire commit
+	commitSignature := createCommitSignature(mgitCommit, nostrPubkey)
+	mgitCommit.NostrSig = commitSignature
 	
 	// Add Nostr signature to author and committer
-	mGitAuthorSig.Signature = nostrEvent.Sig
-	committerSig.Signature = nostrEvent.Sig
+	mGitAuthorSig.Signature = commitSignature
+	committerSig.Signature = commitSignature
 	
-	log.Printf("MGitBridge: Created Nostr signature: %s", nostrEvent.Sig)
+	log.Printf("MGitBridge: Created Nostr signature: %s", commitSignature)
 	
 	// Store the MGit commit object (exactly like CLI)
 	if err := storage.StoreCommit(mgitCommit); err != nil {
