@@ -216,3 +216,61 @@ func setupMGitConfig(destination string, repoInfo *RepositoryInfo) error {
 	NSLog("MGit config created successfully")
 	return nil
 }
+
+// Clone clones an MGit repository to the specified local path
+func Clone(url, localPath, token string) *CloneResult {
+	NSLog("Clone(%s, %s, %s) called", url, localPath, "***")
+	
+	result := &CloneResult{
+		Success:   false,
+		Message:   "",
+		RepoID:    "",
+		RepoName:  "",
+		LocalPath: localPath,
+	}
+	
+	// Validate inputs
+	if url == "" {
+		result.Message = "Repository URL cannot be empty"
+		NSLog("Clone() failed: %s", result.Message)
+		return result
+	}
+	
+	if localPath == "" {
+		result.Message = "Local path cannot be empty"
+		NSLog("Clone() failed: %s", result.Message)
+		return result
+	}
+	
+	if token == "" {
+		result.Message = "Authentication token cannot be empty"
+		NSLog("Clone() failed: %s", result.Message)
+		return result
+	}
+	
+	// Check if destination already exists
+	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
+		result.Message = fmt.Sprintf("Destination path already exists: %s", localPath)
+		NSLog("Clone() failed: %s", result.Message)
+		return result
+	}
+	
+	// Call the actual MGit clone function
+	err := cloneRepository(url, localPath, token)
+	
+	if err != nil {
+		result.Message = fmt.Sprintf("Clone failed: %s", err.Error())
+		NSLog("Clone() failed: %s", err.Error())
+		return result
+	}
+	
+	// Extract repository info from the URL for the result
+	repoID := extractRepoID(url)
+	result.Success = true
+	result.Message = "Repository cloned successfully"
+	result.RepoID = repoID
+	result.RepoName = repoID // Could be enhanced to get actual name from metadata
+	
+	NSLog("Clone() succeeded: %s", result.Message)
+	return result
+}
