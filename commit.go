@@ -353,10 +353,6 @@ func Commit(repoPath string, message string, authorName string, authorEmail stri
 	// Compute the MGit hash (exactly like CLI)
 	mgitHash := computeMGitHash(gitCommit, parentMGitHashes, nostrPubkey)
 	
-	// Create MGit signatures with Nostr info
-	mGitAuthorSig := convertToMGitSignature(gitCommit.Author, nostrPubkey)
-	committerSig := convertToMGitSignature(gitCommit.Committer, nostrPubkey)
-	
 	// Create an MGit commit object (exactly like CLI)
 	mgitCommit := &MCommitStruct{
 		Type:         "commit",
